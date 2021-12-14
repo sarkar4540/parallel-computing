@@ -146,7 +146,7 @@ The sparsity vs runtime, and sparsity vs number of operations were recored and p
 
 ![Sparsity vs Runtime](Figure_1.png)
 
-![Sparsity vs Total Operations](Figure_1.png)
+![Sparsity vs Total Operations](Figure_2.png)
 
 ## Inference
 
