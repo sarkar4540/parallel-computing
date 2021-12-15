@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <mpi/mpi.h>
 #include <fstream>
+#include <omp.h>
 
 using namespace std;
 
@@ -29,27 +30,69 @@ int main(int argc, char **argv)
             input >> arr[i][j];
         }
     }
-    double current_threshold=INT32_MAX;
-    if (pid == 0)
+    double current_diff = INT32_MAX;
+    int m = 0;
+    while (current_diff > thres && m<100)
     {
-        for (int i = 0; i < pn; i++)
+        m++;
+        if (pid == 0)
         {
-            int start = i * n / pn;
-            int end = (i + 1) * n / pn;
-            for (int j = start; j < end; j++)
+            current_diff = 0;
+            for (int i = 1; i < pn; i++)
             {
-                MPI_Recv(arr[j],n,MPI_DOUBLE,i,1,MPI_COMM_WORLD,&status);
+                double diff_val;
+                MPI_Recv(&diff_val, 1, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
+                current_diff = max<double>(current_diff, diff_val);
             }
         }
-    }
-    else
-    {
-        int start = (pid - 1) * n / pn;
-        int end = (pid)*n / pn;
-        for (int i = start; i < end; i++)
+        else
         {
-            MPI_Send(arr[i],n,MPI_DOUBLE,pid,1,MPI_COMM_WORLD);
+            int start = (pid - 1) * n / pn;
+            int end = (pid)*n / pn;
+            double max_diff = 0;
+            for (int i = start; i < end; i++)
+            {
+#pragma omp parallel for shared(arr, max_diff)
+                for (int j = 0; j < n; j++)
+                {
+                    double sum = arr[i][j];
+                    int count = 1;
+                    if (i > 0)
+                    {
+                        sum += arr[i - 1][j];
+                        count++;
+                    }
+                    if (j > 0)
+                    {
+                        sum += arr[i][j - 1];
+                        count++;
+                    }
+                    if (i < n - 1)
+                    {
+                        sum += arr[i + 1][j];
+                        count++;
+                    }
+                    if (j < n - 1)
+                    {
+                        sum += arr[i][j + 1];
+                        count++;
+                    }
+                    double new_val = sum / count;
+                    max_diff = max<double>(max_diff, new_val - arr[i][j]);
+                    arr[i][j] = new_val;
+                }
+            }
+            MPI_Send(&max_diff, 1, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);
         }
+        MPI_Bcast(&current_diff, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        for (int i = 0; i < n; i++)
+        {
+            MPI_Bcast(arr[i], n, MPI_DOUBLE, i * pn / n + 1, MPI_COMM_WORLD);
+        }
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
+    if(pid==0){
+        cout<<m<<endl;
     }
     MPI_Finalize();
     return 0;
