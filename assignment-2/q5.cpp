@@ -28,12 +28,12 @@ int main(int argc, char **argv)
     pn=pn-1;
     if (pid == 0)
     {
-        int v3[n],temp;
+        int sum=0,temp;
         for(int i=0;i<n;i++){
-            MPI_Recv(v3+i,1,MPI_INT,MPI_ANY_SOURCE,i,MPI_COMM_WORLD,&status);
-            cout<<v3[i]<<" ";
+            MPI_Recv(&temp,1,MPI_INT,MPI_ANY_SOURCE,i,MPI_COMM_WORLD,&status);
+            sum+=temp;
         }
-        cout<<endl;
+        cout<<sum<<endl;
     }
     else
     {

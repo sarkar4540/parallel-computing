@@ -32,17 +32,29 @@ int main(int argc, char **argv)
     }
     double current_diff = INT32_MAX;
     int m = 0;
-    while (current_diff > thres && m<100)
+    while (current_diff > thres
+ //    && m < 100
+     )
     {
         m++;
         if (pid == 0)
         {
             current_diff = 0;
-            for (int i = 1; i < pn; i++)
+            for (int i = 1; i <= pn; i++)
             {
                 double diff_val;
                 MPI_Recv(&diff_val, 1, MPI_DOUBLE, i, 1, MPI_COMM_WORLD, &status);
                 current_diff = max<double>(current_diff, diff_val);
+                cout << i << " " << diff_val << endl;
+            }
+            cout << endl;
+            for (int i = 0; i < n; i++)
+            {
+                for (int j = 0; j < n; j++)
+                {
+                    cout << arr[i][j] << " ";
+                }
+                cout << endl;
             }
         }
         else
@@ -52,7 +64,7 @@ int main(int argc, char **argv)
             double max_diff = 0;
             for (int i = start; i < end; i++)
             {
-#pragma omp parallel for shared(arr, max_diff)
+#pragma omp parallel for reduction(+:arr) shared(max_diff)
                 for (int j = 0; j < n; j++)
                 {
                     double sum = arr[i][j];
@@ -78,6 +90,7 @@ int main(int argc, char **argv)
                         count++;
                     }
                     double new_val = sum / count;
+#pragma omp atomic
                     max_diff = max<double>(max_diff, new_val - arr[i][j]);
                     arr[i][j] = new_val;
                 }
@@ -91,8 +104,9 @@ int main(int argc, char **argv)
         }
         MPI_Barrier(MPI_COMM_WORLD);
     }
-    if(pid==0){
-        cout<<m<<endl;
+    if (pid == 0)
+    {
+        cout <<endl<< m << endl;
     }
     MPI_Finalize();
     return 0;
